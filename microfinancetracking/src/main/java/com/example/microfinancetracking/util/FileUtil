@@ -1,0 +1,66 @@
+package com.example.microfinancetracking.util;
+
+import com.example.microfinancetracking.model.Transaction;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+public class FileUtil {
+
+    private static final String BACKUP_DIR = "backups";
+    private static final String LOG_DIR = "logs";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+
+    // İşlemleri CSV olarak yedekleme
+    public static void backupTransactionsToCsv(List<Transaction> transactions, Long userId) throws IOException {
+        Path backupPath = Paths.get(BACKUP_DIR);
+        if (!Files.exists(backupPath)) {
+            Files.createDirectories(backupPath);
+        }
+
+        String filename = "transactions_user_" + userId + "_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+        Path filePath = backupPath.resolve(filename);
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath.toFile()))) {
+            writer.println("ID,User ID,Category ID,Amount,Description,Date,Type"); // Başlık satırı
+            for (Transaction t : transactions) {
+                writer.printf("%d,%d,%d,%.2f,\"%s\",%s,%s%n",
+                        t.getId(), t.getUserId(), t.getCategoryId(), t.getAmount(),
+                        t.getDescription().replace("\"", "\"\""), t.getDate().toString(), t.getType());
+            }
+        }
+    }
+
+    // Kullanıcı bazlı log dosyası oluşturma
+    public static void logUserActivity(Long userId, String activity) {
+        Path logPath = Paths.get(LOG_DIR);
+        if (!Files.exists(logPath)) {
+            try {
+                Files.createDirectories(logPath);
+            } catch (IOException e) {
+                System.err.println("Log dizini oluşturulurken hata: " + e.getMessage());
+                return;
+            }
+        }
+
+        String filename = "user_" + userId + "_activity.log";
+        Path filePath = logPath.resolve(filename);
+
+        try (FileWriter fw = new FileWriter(filePath.toFile(), true); // true: append moda aç
+             PrintWriter pw = new PrintWriter(fw)) {
+            pw.println(LocalDateTime.now().format(DATE_FORMATTER) + " - " + activity);
+        } catch (IOException e) {
+            System.err.println("Log dosyasına yazılırken hata: " + e.getMessage());
+        }
+    }
+}
